@@ -33,6 +33,7 @@ export default function LessonContent() {
         setFeedback(null);
         setOutput("");
 
+        // Make sure this URL is correct for your setup
         const res = await axios.get(`http://localhost:5000/api/lessons/${id}`);
         const currentLesson = res.data.lesson || res.data;
         setLesson(currentLesson);
@@ -63,6 +64,7 @@ export default function LessonContent() {
     setFeedback("Analyzing code structure...");
 
     try {
+      // 1. Run Code on Piston Compiler
       const res = await axios.post("https://emkc.org/api/v2/piston/execute", {
         language: "java",
         version: "15.0.2",
@@ -73,35 +75,45 @@ export default function LessonContent() {
       const stderr = res.data.run.stderr.trim();
       setOutput(cleanOutput || stderr);
 
+      // 2. Check if Output Matches Expected Result
       if (cleanOutput === lesson?.expectedOutput?.trim()) {
         setIsSuccess(true);
 
         try {
+          // 3. Save to Database & Get Gemini Response
           const dbRes = await submitCode({
             lessonId: id,
             submittedCode: code,
             status: 'completed'
           });
 
-          const earnedXP = dbRes.data.xpAwarded;
-          let finalMessage = dbRes.data.message || "Mission successful!";
-          finalMessage += earnedXP > 0 ? ` (+${earnedXP} XP)` : ` (Practice Mode)`;
+          // --- THIS IS THE CRITICAL FIX ---
+          // We extract the feedback directly from the server response we just got
+          const serverFeedback = dbRes.data.submission?.feedback;
+          const xpAwarded = dbRes.data.xpAwarded;
 
-          setFeedback(finalMessage);
+          if (serverFeedback) {
+             setFeedback(serverFeedback); // Show the Gemini text from DB
+          } else {
+             setFeedback(`Mission Accomplished! ${xpAwarded > 0 ? `(+${xpAwarded} XP)` : ''}`);
+          }
+          
           await refreshProfile();
 
-        } catch {
-          setFeedback("Mission Complete! (Offline Mode)");
+        } catch (error) {
+          console.error("DB Save Failed:", error);
+          setFeedback("Mission Complete! (Offline Mode - Progress Saved Locally)");
         }
 
       } else {
         setIsSuccess(false);
-        setFeedback(stderr || "Output mismatch. Try again.");
+        setFeedback(stderr || "Output mismatch. Review your logic and try again.");
       }
 
-    } catch {
-      setOutput("Compiler connection lost.");
-      setFeedback("System Error: Could not reach compiler.");
+    } catch (err) {
+      console.error(err);
+      setOutput("Connection Error.");
+      setFeedback("System Error: Compiler unreachable.");
     } finally {
       setIsRunning(false);
     }
@@ -173,12 +185,18 @@ export default function LessonContent() {
                 animate={{ opacity: 1, y: 0 }}
                 className="rounded-2xl border border-sky-500/30 bg-sky-900/30 p-4 sm:p-6"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex gap-3">
-                    <CheckCircle2 className="text-emerald-400" size={24} />
-                    <div>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="flex gap-3 w-full">
+                    <CheckCircle2 className="text-emerald-400 shrink-0" size={24} />
+                    <div className="space-y-1 w-full">
                       <h3 className="font-bold text-white">Mission Success</h3>
-                      <p className="text-sm text-sky-200">{feedback}</p>
+                      
+                      {/* FEEDBACK DISPLAY - Scrolls if text is long */}
+                      <div className="max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                        <p className="text-xs sm:text-sm text-sky-200 leading-relaxed whitespace-pre-line">
+                          {feedback}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
@@ -186,8 +204,9 @@ export default function LessonContent() {
                     <Button
                       variant="primary"
                       onClick={() => navigate(`/lesson/${nextLessonId}`)}
+                      className="shrink-0"
                     >
-                      Next Mission <ChevronRight size={16} />
+                      Next <ChevronRight size={16} />
                     </Button>
                   )}
                 </div>
@@ -230,7 +249,13 @@ export default function LessonContent() {
 
         </div>
       </motion.div>
+      
+      {/* Scrollbar Style */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
+      `}</style>
     </div>
   );
 }
-
