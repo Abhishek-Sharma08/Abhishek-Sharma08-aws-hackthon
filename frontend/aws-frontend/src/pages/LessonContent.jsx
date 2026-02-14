@@ -1,11 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Sparkles, Terminal, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Sparkles, 
+  Terminal, 
+  ChevronRight, 
+  CheckCircle2, 
+  XCircle, 
+  AlertCircle,
+  X 
+} from 'lucide-react';
 import axios from 'axios';
 
 import CodeEditor from '../components/CodeEditor';
-import FeedbackBox from '../components/FeedbackBox';
 import Button from '../components/Button';
 import Loader from '../components/Loader';
 
@@ -20,11 +28,14 @@ export default function LessonContent() {
   const [lesson, setLesson] = useState(null);
   const [nextLessonId, setNextLessonId] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // State for Code Execution & Feedback
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  // 1. Fetch Lesson Data
   useEffect(() => {
     const fetchLessonAndPath = async () => {
       try {
@@ -33,7 +44,6 @@ export default function LessonContent() {
         setFeedback(null);
         setOutput("");
 
-        // Make sure this URL is correct for your setup
         const res = await axios.get(`http://localhost:5000/api/lessons/${id}`);
         const currentLesson = res.data.lesson || res.data;
         setLesson(currentLesson);
@@ -50,7 +60,7 @@ export default function LessonContent() {
         }
 
       } catch (err) {
-        console.error(err);
+        console.error("Error loading lesson:", err);
       } finally {
         setLoading(false);
       }
@@ -59,12 +69,14 @@ export default function LessonContent() {
     fetchLessonAndPath();
   }, [id]);
 
+  // 2. Handle Run Code
   const handleRunCode = async (code) => {
     setIsRunning(true);
-    setFeedback("Analyzing code structure...");
+    setFeedback("Analyzing..."); // Shortened text
+    setIsSuccess(false);
 
     try {
-      // 1. Run Code on Piston Compiler
+      // Execute on Piston
       const res = await axios.post("https://emkc.org/api/v2/piston/execute", {
         language: "java",
         version: "15.0.2",
@@ -73,41 +85,38 @@ export default function LessonContent() {
 
       const cleanOutput = res.data.run.stdout.trim();
       const stderr = res.data.run.stderr.trim();
+      
       setOutput(cleanOutput || stderr);
 
-      // 2. Check if Output Matches Expected Result
-      if (cleanOutput === lesson?.expectedOutput?.trim()) {
-        setIsSuccess(true);
+      const expected = lesson?.expectedOutput?.trim();
+      const isCorrect = cleanOutput === expected && !stderr;
+      
+      setIsSuccess(isCorrect);
 
-        try {
-          // 3. Save to Database & Get Gemini Response
-          const dbRes = await submitCode({
-            lessonId: id,
-            submittedCode: code,
-            status: 'completed'
-          });
+      try {
+        const dbRes = await submitCode({
+          lessonId: id,
+          submittedCode: code,
+          status: isCorrect ? 'completed' : 'failed' 
+        });
 
-          // --- THIS IS THE CRITICAL FIX ---
-          // We extract the feedback directly from the server response we just got
-          const serverFeedback = dbRes.data.submission?.feedback;
-          const xpAwarded = dbRes.data.xpAwarded;
+        const responseData = dbRes.data || dbRes;
+        const serverFeedback = responseData.submission?.feedback;
+        const xpAwarded = responseData.xpAwarded;
 
-          if (serverFeedback) {
-             setFeedback(serverFeedback); // Show the Gemini text from DB
-          } else {
-             setFeedback(`Mission Accomplished! ${xpAwarded > 0 ? `(+${xpAwarded} XP)` : ''}`);
-          }
-          
-          await refreshProfile();
-
-        } catch (error) {
-          console.error("DB Save Failed:", error);
-          setFeedback("Mission Complete! (Offline Mode - Progress Saved Locally)");
+        if (isCorrect) {
+          if (serverFeedback) setFeedback(serverFeedback);
+          else setFeedback(`Mission Accomplished! ${xpAwarded > 0 ? `(+${xpAwarded} XP)` : ''}`);
+          await refreshProfile(); 
+        } else {
+          if (stderr) setFeedback(serverFeedback || "Syntax Error: Check console for details.");
+          else setFeedback(serverFeedback || `Output Mismatch.\nExpected: "${expected}"\nActual: "${cleanOutput}"`);
         }
 
-      } else {
-        setIsSuccess(false);
-        setFeedback(stderr || "Output mismatch. Review your logic and try again.");
+      } catch (error) {
+        console.error("DB Save Failed:", error);
+        if (isCorrect) setFeedback("Mission Complete! (Offline Mode)");
+        else setFeedback("Connection to HQ failed.");
       }
 
     } catch (err) {
@@ -127,14 +136,17 @@ export default function LessonContent() {
     );
   }
 
+  // Helper to determine error styles
+  const isError = output.toLowerCase().includes('error') || output.toLowerCase().includes('exception');
+
   return (
-    <div className="min-h-[calc(100vh-6rem)] lg:h-[calc(100vh-6rem)] w-full max-w-7xl mx-auto bg-[#0B1120] px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-8 lg:overflow-hidden">
+    <div className="min-h-[calc(100vh-6rem)] lg:h-[calc(100vh-6rem)] w-full max-w-7xl mx-auto bg-[#0B1120] px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-6 lg:overflow-hidden">
 
       {/* LEFT PANEL */}
       <motion.div
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        className="w-full lg:w-[45%] flex flex-col gap-6 lg:gap-8 border-b lg:border-b-0 lg:border-r border-white/5 pb-6 lg:pb-0 lg:pr-6 lg:overflow-y-auto"
+        className="w-full lg:w-[45%] flex flex-col gap-4 lg:gap-6 border-b lg:border-b-0 lg:border-r border-white/5 pb-6 lg:pb-0 lg:pr-6 lg:overflow-y-auto"
       >
         <button
           onClick={() => navigate('/progress')}
@@ -148,11 +160,11 @@ export default function LessonContent() {
             <Sparkles size={10} /> Mission {lesson?.lessonNumber}
           </div>
 
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight">
             {lesson?.title}
           </h1>
 
-          <div className="text-slate-300 whitespace-pre-line leading-relaxed text-sm sm:text-base">
+          <div className="text-slate-300 whitespace-pre-line leading-relaxed text-sm">
             {lesson?.concept}
           </div>
         </div>
@@ -163,10 +175,10 @@ export default function LessonContent() {
         initial={{ x: 20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="w-full lg:w-[55%] flex flex-col gap-6 lg:min-h-0"
+        className="w-full lg:w-[55%] flex flex-col gap-4 lg:min-h-0"
       >
         {/* Code Editor */}
-        <div className="h-64 sm:h-80 lg:flex-1 lg:min-h-0 overflow-hidden rounded-2xl border border-white/10 bg-[#1E1E1E] shadow-2xl">
+        <div className="h-64 sm:h-72 lg:flex-1 lg:min-h-0 overflow-hidden rounded-xl border border-white/10 bg-[#1E1E1E] shadow-2xl">
           <CodeEditor
             initialCode={lesson?.starterCode}
             onRun={handleRunCode}
@@ -174,26 +186,26 @@ export default function LessonContent() {
           />
         </div>
 
-        {/* Feedback + Console */}
-        <div className="flex flex-col gap-6">
+        {/* COMPACT FEEDBACK & CONSOLE WRAPPER */}
+        <div className="flex flex-col gap-3 shrink-0">
 
           <AnimatePresence mode="wait">
-            {isSuccess ? (
+            {/* SUCCESS CARD */}
+            {isSuccess && (
               <motion.div
                 key="success"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-sky-500/30 bg-sky-900/30 p-4 sm:p-6"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="rounded-xl border border-emerald-500/30 bg-emerald-900/20 p-3"
               >
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div className="flex gap-3 w-full">
-                    <CheckCircle2 className="text-emerald-400 shrink-0" size={24} />
-                    <div className="space-y-1 w-full">
-                      <h3 className="font-bold text-white">Mission Success</h3>
-                      
-                      {/* FEEDBACK DISPLAY - Scrolls if text is long */}
-                      <div className="max-h-32 overflow-y-auto pr-2 custom-scrollbar">
-                        <p className="text-xs sm:text-sm text-sky-200 leading-relaxed whitespace-pre-line">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex gap-3 w-full overflow-hidden">
+                    <CheckCircle2 className="text-emerald-400 shrink-0 mt-0.5" size={20} />
+                    <div className="space-y-1 min-w-0">
+                      <h3 className="font-bold text-sm text-white">Mission Success</h3>
+                      <div className="max-h-16 overflow-y-auto pr-2 custom-scrollbar">
+                        <p className="text-xs text-emerald-100/80 leading-relaxed whitespace-pre-line">
                           {feedback}
                         </p>
                       </div>
@@ -204,57 +216,92 @@ export default function LessonContent() {
                     <Button
                       variant="primary"
                       onClick={() => navigate(`/lesson/${nextLessonId}`)}
-                      className="shrink-0"
+                      className="shrink-0 px-3 py-1.5 text-xs h-auto"
                     >
-                      Next <ChevronRight size={16} />
+                      Next <ChevronRight size={14} />
                     </Button>
                   )}
                 </div>
               </motion.div>
-            ) : (
-              feedback && (
-                <FeedbackBox
-                  feedback={feedback}
-                  isSuccess={false}
-                  onTryAgain={() => setFeedback(null)}
-                />
-              )
+            )}
+
+            {/* ERROR CARD (COMPACT) */}
+            {!isSuccess && feedback && !isRunning && (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className={`rounded-xl border p-3 shadow-lg relative ${
+                  isError
+                    ? "border-rose-500/30 bg-rose-950/40"
+                    : "border-amber-500/30 bg-amber-950/40"
+                }`}
+              >
+                {/* Close Button Top Right */}
+                <button 
+                  onClick={() => setFeedback(null)} 
+                  className="absolute top-3 right-3 text-white/30 hover:text-white transition-colors"
+                >
+                  <X size={14} />
+                </button>
+
+                <div className="flex gap-3 pr-6"> {/* Padding right for close button */}
+                  {isError ? (
+                     <XCircle className="text-rose-400 shrink-0 mt-0.5" size={20} />
+                  ) : (
+                     <AlertCircle className="text-amber-400 shrink-0 mt-0.5" size={20} />
+                  )}
+                  
+                  <div className="min-w-0 flex-1">
+                    <h3 className={`font-bold text-sm mb-1 ${
+                      isError ? "text-rose-200" : "text-amber-200"
+                    }`}>
+                      {isError ? "Compilation Failed" : "Logic Error"}
+                    </h3>
+                    
+                    {/* Compact Scrollable Text */}
+                    <div className="max-h-[70px] overflow-y-auto pr-2 custom-scrollbar">
+                      <p className={`text-xs leading-relaxed whitespace-pre-line ${
+                        isError ? "text-rose-100/80" : "text-amber-100/80"
+                      }`}>
+                        {feedback}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Console */}
-          <div className="rounded-2xl border border-white/10 bg-black/40 p-4 sm:p-5 font-mono text-xs sm:text-sm shadow-inner min-h-30">
-            <div className="flex justify-between mb-3 border-b border-white/5 pb-2 text-[10px] text-slate-500 font-bold uppercase">
+          {/* CONSOLE (Fixed Height) */}
+          <div className="rounded-xl border border-white/10 bg-black/40 p-3 font-mono text-xs shadow-inner h-32 flex flex-col">
+            <div className="flex justify-between mb-2 border-b border-white/5 pb-1 text-[10px] text-slate-500 font-bold uppercase shrink-0">
               <span className="flex items-center gap-2">
                 <Terminal size={12} /> Console Output
               </span>
               {isRunning && (
-                <span className="text-sky-400 animate-pulse">
-                  Executing...
-                </span>
+                <span className="text-sky-400 animate-pulse">Running...</span>
               )}
             </div>
 
             <pre
-              className={`whitespace-pre-wrap leading-relaxed ${
-                output.includes('Error') ||
-                output.toLowerCase().includes('exception')
-                  ? 'text-rose-400'
-                  : 'text-sky-300'
+              className={`whitespace-pre-wrap leading-relaxed flex-1 overflow-y-auto custom-scrollbar ${
+                isError ? 'text-rose-400' : 'text-sky-300'
               }`}
             >
-              {output || "// Awaiting command execution..."}
+              {output || <span className="text-slate-700">// Ready for execution...</span>}
             </pre>
           </div>
 
         </div>
       </motion.div>
       
-      {/* Scrollbar Style */}
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
       `}</style>
     </div>
   );
