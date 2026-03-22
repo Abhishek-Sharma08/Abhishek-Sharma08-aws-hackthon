@@ -7,7 +7,8 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true
-    },
+    }
+    ,
     email: {
       type: String,
       required: true,
@@ -41,6 +42,28 @@ const userSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: "Lesson"
       }
+    ],
+
+    friends : [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+      }
+    ],
+
+    sendRequests : [
+      {
+        type : mongoose.Schema.Types.ObjectId,
+        ref : "User"
+      
+      }
+    ],
+
+    receivedRequests : [
+      {
+        type : mongoose.Schema.Types.ObjectId,
+        ref : "User"
+      }
     ]
   },
   { timestamps: true }
@@ -57,4 +80,6 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
 };
 
 const User = mongoose.model("User", userSchema);
+
+
 export default User;

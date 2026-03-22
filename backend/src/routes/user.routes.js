@@ -1,65 +1,32 @@
-import express from "express"
-import authMiddleware from "../middlewares/auth.middleware.js"
-import User from "../models/user.models.js" 
+import express from "express";
+import authMiddleware from "../middlewares/auth.middleware.js";
+import {
+  getProfile,
+  updateStats,
+  sendFriendRequest,
+  acceptFriendRequest,
+  rejectFriendRequest,
+  getFriends,
+  getRequests,
+  getLeaderboard
+} from "../controllers/user.controller.js";
 
-const router = express.Router()
+const router = express.Router();
 
-router.get("/profile", authMiddleware, async (req, res) => {
-    try {
-        const userId = req.user.userId || req.user.id || req.user._id;
-        const user = await User.findById(userId).select("-password");
+router.get("/profile", authMiddleware, getProfile);
 
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
+router.put("/stats", authMiddleware, updateStats);
 
-        res.json({
-            success: true,
-            user: user
-        });
-    } catch (error) {
-        res.status(500).json({ message: "Error fetching profile" });
-    }
-})
+router.post("/send-request",authMiddleware, sendFriendRequest);
 
-router.put("/stats", authMiddleware, async (req, res) => {
-    try {
-        const { xp, difficulty } = req.body; 
-        const userId = req.user.userId || req.user.id || req.user._id;
+router.post("/accept-request", authMiddleware, acceptFriendRequest);
 
-        if (!userId) {
-             return res.status(400).json({ message: "Invalid token data" });
-        }
+router.post("/reject-request", authMiddleware, rejectFriendRequest);
 
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
+router.get("/friends", authMiddleware, getFriends);
 
-        if (difficulty) {
-            user.difficulty = difficulty; 
-        }
+router.get("/requests", authMiddleware, getRequests);
 
-        if (xp && Number(xp) > 0) {
-            user.xp = (user.xp || 0) + Number(xp);
-            user.level = Math.floor(0.1 * Math.sqrt(user.xp)) + 1;
-        }
+router.get("/leaderboard", authMiddleware, getLeaderboard);
 
-        await user.save();
-
-        res.json({
-            message: "Stats updated successfully",
-            updatedStats: {
-                xp: user.xp,
-                level: user.level,
-                difficulty: user.difficulty
-            }
-        });
-
-    } catch (error) {
-        console.error("Stats Update Error:", error);
-        res.status(500).json({ message: error.message || "Server error updating stats" });
-    }
-});
-
-export default router
+export default router;

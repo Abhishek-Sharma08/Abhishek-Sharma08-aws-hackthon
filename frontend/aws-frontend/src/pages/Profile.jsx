@@ -59,8 +59,7 @@ export default function Profile() {
 
   return (
     <div className="h-[calc(100vh-6rem)] bg-[#0B1120] text-white px-4 sm:px-6 py-6 flex flex-col overflow-hidden">
-
-      {/* REMOVE max-w-4xl so it matches parent width */}
+      
       <div className="w-full flex flex-col h-full space-y-6">
 
         {/* ================= PROFILE SECTION ================= */}
@@ -86,8 +85,27 @@ export default function Profile() {
                 <h1 className="text-lg sm:text-2xl font-black uppercase truncate">
                   {userData?.name || "Agent"}
                 </h1>
+                
+                {/* FIXED: User ID Copy Section */}
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  <span className="truncate font-mono opacity-80">
+                    ID: {userData?._id || "N/A"}
+                  </span>
 
-                <div className="flex flex-wrap gap-3">
+                  <button 
+                    onClick={() => handleCopy(userData?._id, "userid")} 
+                    className="p-1.5 rounded-md bg-white/5 hover:bg-sky-500/20 text-slate-500 hover:text-sky-400 transition-all"
+                    title="Copy User ID"
+                  >
+                    {copiedId === "userid" ? (
+                      <Check size={14} className="text-emerald-400" />
+                    ) : (
+                      <Copy size={14} />
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-3 pt-1">
                   <div className="flex items-center gap-1 px-3 py-1 rounded-md bg-sky-500/10 border border-sky-500/20 text-xs font-bold text-sky-400 uppercase">
                     <Cpu size={12} />
                     {userData?.difficulty || "Beginner"}
@@ -121,7 +139,6 @@ export default function Profile() {
             </h2>
           </div>
 
-          {/* SINGLE COLLECTIVE SCROLL */}
           <div className="archive-scroll flex-1 overflow-y-auto space-y-5 pr-2">
 
             {submissions.length > 0 ? (
@@ -179,16 +196,14 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* MATCHED SNOWVAULT SCROLLBAR */}
+      {/* CUSTOM SCROLLBAR STYLES */}
       <style>{`
         .archive-scroll::-webkit-scrollbar {
           width: 6px;
         }
-
         .archive-scroll::-webkit-scrollbar-track {
           background: transparent;
         }
-
         .archive-scroll::-webkit-scrollbar-thumb {
           background: linear-gradient(
             to bottom,
@@ -197,7 +212,6 @@ export default function Profile() {
           );
           border-radius: 999px;
         }
-
         .archive-scroll::-webkit-scrollbar-thumb:hover {
           background: linear-gradient(
             to bottom,
@@ -205,7 +219,6 @@ export default function Profile() {
             rgba(14, 165, 233, 0.7)
           );
         }
-
         .archive-scroll {
           scrollbar-width: thin;
           scrollbar-color: rgba(56, 189, 248, 0.5) transparent;
@@ -215,7 +228,3 @@ export default function Profile() {
     </div>
   );
 }
-
-
-
-

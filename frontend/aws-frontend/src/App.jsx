@@ -10,21 +10,21 @@ import Practice from './pages/Practice';
 import Progress from './pages/Progress';
 import HomePage from './pages/Home';
 import Courses from './pages/Courses';
-import Profile from './pages/Profile'; // Import the new Profile page
+import Profile from './pages/Profile';
+import Friends from './pages/Friends';
+import Leaderboard from './pages/Leaderboard';
 
-// 1. Layout Component with Navbar
 const AppLayout = () => {
   return (
     <>
       <Navbar />
       <main className="container mx-auto px-4 py-8">
-        <Outlet /> 
+        <Outlet />
       </main>
     </>
   );
 };
 
-// 2. Animated Wrapper for smooth page entries
 const PageWrapper = ({ children }) => (
   <motion.div
     initial={{ opacity: 0, y: 10 }}
@@ -36,25 +36,21 @@ const PageWrapper = ({ children }) => (
   </motion.div>
 );
 
-// 3. Routes Component to handle location-based transitions
 function AnimatedRoutes() {
   const location = useLocation();
 
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* --- Landing Page (No Navbar) --- */}
+        
         <Route path="/" element={<PageWrapper><HomePage /></PageWrapper>} />
         <Route path="/home" element={<PageWrapper><HomePage /></PageWrapper>} />
-        
-        {/* --- Public Auth Routes --- */}
+
         <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
         <Route path="/signup" element={<PageWrapper><Signup /></PageWrapper>} />
 
-        {/* --- Protected App Routes (With Navbar) --- */}
         <Route element={<AppLayout />}>
-          
-          {/* New Profile Route */}
+
           <Route
             path="/profile"
             element={
@@ -81,6 +77,7 @@ function AnimatedRoutes() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/lesson/:id"
             element={
@@ -89,6 +86,7 @@ function AnimatedRoutes() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/practice/:id"
             element={
@@ -97,6 +95,7 @@ function AnimatedRoutes() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/progress"
             element={
@@ -105,6 +104,25 @@ function AnimatedRoutes() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/friends"
+            element={
+              <ProtectedRoute>
+                <PageWrapper><Friends /></PageWrapper>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/leaderboard"
+            element={
+              <ProtectedRoute>
+                <PageWrapper><Leaderboard /></PageWrapper>
+              </ProtectedRoute>
+            }
+          />
+
         </Route>
       </Routes>
     </AnimatePresence>

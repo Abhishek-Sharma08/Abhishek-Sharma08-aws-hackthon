@@ -8,7 +8,8 @@ import {
   LogOut, 
   BookOpen, 
   Contact, 
-  ExternalLink 
+  ExternalLink,
+  Users
 } from 'lucide-react'; 
 import { useUser } from '../context/UserContext';
 import XpBadge from './XpBadge'; 
@@ -107,7 +108,6 @@ export default function Navbar() {
                     className="absolute right-0 top-full mt-3 w-48 origin-top-right overflow-hidden rounded-xl border border-white/10 bg-[#0f172a]/95 p-1 shadow-2xl backdrop-blur-xl ring-1 ring-black/5"
                     style={{ animation: 'popupEnter 200ms ease-out both' }}
                   >
-                    {/* FIXED: Added manual onClick to close dropdown on navigation */}
                     <Link 
                       to="/profile"
                       onClick={() => setIsOpen(false)}
@@ -118,22 +118,23 @@ export default function Navbar() {
                           View Profile <ExternalLink size={10} className="inline" />
                         </p>
                     </Link>
-                    
-                    <div className="md:hidden block border-b border-white/5 mb-1 pb-1">
-                        <Link to="/courses" onClick={() => setIsOpen(false)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white">
-                           <BookOpen size={14} /> Courses
-                        </Link>
-                        <Link to="/profile" onClick={() => setIsOpen(false)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white">
-                           <Contact size={14} /> Profile
-                        </Link>
-                        <Link to="/skill-check" onClick={() => setIsOpen(false)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white">
-                           <CheckCircle2 size={14} /> Skill Check
-                        </Link>
-                        <Link to="/progress" onClick={() => setIsOpen(false)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white">
-                           <LayoutDashboard size={14} /> Map
-                        </Link>
-                    </div>
 
+                    <Link 
+                      to="/friends"
+                      onClick={() => setIsOpen(false)}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white"
+                    >
+                      <Users size={14} /> Friends
+                    </Link>
+
+                    <Link 
+                      to="/leaderboard"
+                      onClick={() => setIsOpen(false)}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white"
+                    >
+                      <LayoutDashboard size={14} /> Leaderboard
+                    </Link>
+                            
                     <button
                       onClick={handleLogout}
                       className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
