@@ -145,7 +145,7 @@ export default function LessonContent() {
 
           <div className="text-slate-300 whitespace-pre-line leading-relaxed text-sm sm:text-base">
             {lesson?.concept}
-          </p>
+          </div>
         </div>
       </motion.div>
 
@@ -205,6 +205,7 @@ export default function LessonContent() {
               )
             )}
           </AnimatePresence>
+          </div>
 
           {/* Console */}
           <div className="rounded-2xl border border-white/10 bg-black/40 p-4 sm:p-5 font-mono text-xs sm:text-sm shadow-inner min-h-30">
