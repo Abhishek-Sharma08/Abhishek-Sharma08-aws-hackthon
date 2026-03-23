@@ -22,41 +22,43 @@ export const getProfile  = async (req, res) => {
 }   
 
 export const updateStats = async (req, res) => {
-  try {
-    const { xp } = req.body;
-    const userId = req.user._id;
+    try {
+        const { xp, difficulty } = req.body; 
+        const userId = req.user.userId || req.user.id || req.user._id;
 
-    if (!xp || xp <= 0) {
-      return res.status(400).json({
-        message: "Invalid xp"
-      });
+        if (!userId) {
+             return res.status(400).json({ message: "Invalid token data" });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (difficulty) {
+            user.difficulty = difficulty; 
+        }
+
+        if (xp && Number(xp) > 0) {
+            user.xp = (user.xp || 0) + Number(xp);
+            user.level = Math.floor(0.1 * Math.sqrt(user.xp)) + 1;
+        }
+
+        await user.save();
+
+        res.json({
+            message: "Stats updated successfully",
+            updatedStats: {
+                xp: user.xp,
+                level: user.level,
+                difficulty: user.difficulty
+            }
+        });
+
+    } catch (error) {
+        console.error("Stats Update Error:", error);
+        res.status(500).json({ message: error.message || "Server error updating stats" });
     }
-
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({
-        message: "User not found"
-      });
-    }
-
-    user.xp += xp;
-
-    user.level = Math.floor(0.1 * Math.sqrt(user.xp)) + 1;
-
-    await user.save();
-
-    res.json({
-      message: "XP updated successfully",
-      xp: user.xp,
-      level: user.level
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      message: "Error while updating"
-    });
-  }
 };
 
 
